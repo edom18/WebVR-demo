@@ -25,18 +25,13 @@
             }
         }
 
-        initScene();
         initRenderer();
+        initScene();
         render();
     } 
 
     function loadModels() {
         var modelUrl = './resources/models/gips-danger/gips-danger_rig.js';
-            var modelFrames = {
-            stand: [ 0, 32,   0, {state: 'stand', action: false}],
-            walk : [33, 65, 1.6, {state: 'stand', action: false}],
-            run  : [66, 98,  3.2, {state: 'stand', action: false}]
-        };
 
         //load a gips-danger
         var loader = new THREE.JSONLoader();
@@ -45,7 +40,7 @@
         function createModel(geometry, materials) {
 
             var facematerial;
-            var scale = 0.5;
+            var scale = 500;
 
             if (materials) {
                 facematerial = new THREE.MeshFaceMaterial(materials);
@@ -53,7 +48,7 @@
 
             var model = new THREE.SkinnedMesh(geometry, facematerial);
             model.scale.set(scale, scale, scale);
-            model.position.set(0, 0, 0);
+            model.position.set(0, -1800, 0);
 
             scene.add(model);
         }
@@ -63,17 +58,12 @@
 
     var light = null;
     function initScene() {
-        camera = new THREE.PerspectiveCamera(60, 1280 / 800, 0.001, 10);
-        camera.position.y = 2.0;
-        camera.position.z = 1.5;
+        camera = new THREE.PerspectiveCamera(60, 1280 / 800, 1, 3000000);
+        camera.position.set(0, 750, 1500);
         scene = new THREE.Scene();
-        var geometry = new THREE.IcosahedronGeometry(1, 1);
-        var material = new THREE.MeshNormalMaterial();
-        mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
 
-        light = new THREE.DirectionalLight(0x999999);
-        light.position.set(1, 1, 1);
+        light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 1 );
+        light.position.set(-1, 1, -1);
         scene.add(light);
 
         var ambient = new THREE.AmbientLight(0xaaaaaa);
@@ -84,6 +74,7 @@
         createWater();
     }
 
+    var water = null;
     function createWater() {
         var parameters = {
             width: 2000,
@@ -98,9 +89,9 @@
         var waterNormals = new THREE.ImageUtils.loadTexture('textures/waternormals.jpg');
         waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping; 
 
-        var water = new THREE.Water( renderer, camera, scene, {
-            textureWidth: 512, 
-            textureHeight: 512,
+        water = new THREE.Water( renderer, camera, scene, {
+            textureWidth: 1024, 
+            textureHeight: 1024,
             waterNormals: waterNormals,
             alpha: 	1.0,
             sunDirection: light.position.clone().normalize(),
@@ -118,6 +109,56 @@
         mirrorMesh.add(water);
         mirrorMesh.rotation.x = -Math.PI * 0.5;
         scene.add(mirrorMesh);
+
+        var cubeMap = new THREE.CubeTexture([]);
+        cubeMap.format = THREE.RGBFormat;
+        cubeMap.flipY = false;
+
+        var loader = new THREE.ImageLoader();
+        loader.load( 'textures/skyboxsun25degtest.png', function ( image ) {
+
+            var getSide = function ( x, y ) {
+
+                var size = 1024;
+
+                var canvas = document.createElement( 'canvas' );
+                canvas.width = size;
+                canvas.height = size;
+
+                var context = canvas.getContext( '2d' );
+                context.drawImage( image, - x * size, - y * size );
+
+                return canvas;
+
+            };
+
+            cubeMap.images[ 0 ] = getSide( 2, 1 ); // px
+            cubeMap.images[ 1 ] = getSide( 0, 1 ); // nx
+            cubeMap.images[ 2 ] = getSide( 1, 0 ); // py
+            cubeMap.images[ 3 ] = getSide( 1, 2 ); // ny
+            cubeMap.images[ 4 ] = getSide( 1, 1 ); // pz
+            cubeMap.images[ 5 ] = getSide( 3, 1 ); // nz
+            cubeMap.needsUpdate = true;
+
+        } );
+
+        var cubeShader = THREE.ShaderLib['cube'];
+        cubeShader.uniforms['tCube'].value = cubeMap;
+
+        var skyBoxMaterial = new THREE.ShaderMaterial( {
+            fragmentShader: cubeShader.fragmentShader,
+            vertexShader: cubeShader.vertexShader,
+            uniforms: cubeShader.uniforms,
+            depthWrite: false,
+            side: THREE.BackSide
+        });
+
+        var skyBox = new THREE.Mesh(
+            new THREE.BoxGeometry( 1000000, 1000000, 1000000 ),
+            skyBoxMaterial
+        );
+        
+        scene.add( skyBox );
     }
 
     function initRenderer() {
@@ -132,12 +173,14 @@
 
     function render() {
         requestAnimationFrame(render);
-        mesh.rotation.y += 0.01;
         var state = vrHMDSensor.getState();
         camera.quaternion.set(state.orientation.x, 
                               state.orientation.y, 
                               state.orientation.z, 
                               state.orientation.w);
+        water.material.uniforms.time.value += 1.0 / 60.0;
+        water.render();
+        // renderer.render(scene, camera);
         vrrenderer.render(scene, camera);
     }
 
