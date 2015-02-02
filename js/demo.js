@@ -10,6 +10,12 @@
         renderer,
         vrrenderer;
 
+    var light = null;
+    var water = null;
+
+    /**
+     * Get VR devices callback.
+     */
     function vrDeviceCallback(vrdevs) {
         for (var i = 0; i < vrdevs.length; ++i) {
             if (vrdevs[i] instanceof HMDVRDevice) {
@@ -30,8 +36,11 @@
         render();
     } 
 
+    /**
+     * Load a model.
+     */
     function loadModels() {
-        var modelUrl = './resources/models/gips-danger/gips-danger_rig.js';
+        var modelUrl = './models/gips-danger/gips-danger_rig.js';
 
         //load a gips-danger
         var loader = new THREE.JSONLoader();
@@ -55,8 +64,9 @@
     }
 
     
-
-    var light = null;
+    /**
+     * Initialize a scene.
+     */
     function initScene() {
         camera = new THREE.PerspectiveCamera(60, 1280 / 800, 1, 3000000);
         camera.position.set(0, 750, 1500);
@@ -74,7 +84,6 @@
         createWater();
     }
 
-    var water = null;
     function createWater() {
         var parameters = {
             width: 2000,
@@ -98,7 +107,7 @@
             sunColor: 0xffffff,
             waterColor: 0x001e0f,
             distortionScale: 50.0,
-        } );
+        });
 
 
         var mirrorMesh = new THREE.Mesh(
@@ -129,7 +138,6 @@
                 context.drawImage( image, - x * size, - y * size );
 
                 return canvas;
-
             };
 
             cubeMap.images[ 0 ] = getSide( 2, 1 ); // px
@@ -158,7 +166,7 @@
             skyBoxMaterial
         );
         
-        scene.add( skyBox );
+        scene.add(skyBox);
     }
 
     function initRenderer() {
@@ -180,11 +188,10 @@
                               state.orientation.w);
         water.material.uniforms.time.value += 1.0 / 60.0;
         water.render();
-        // renderer.render(scene, camera);
         vrrenderer.render(scene, camera);
     }
 
-    window.addEventListener("keypress", function(e) {
+    window.addEventListener('keypress', function(e) {
         if (e.charCode == 'f'.charCodeAt(0)) {
             if (renderCanvas.mozRequestFullScreen) {
                 renderCanvas.mozRequestFullScreen({
@@ -207,7 +214,7 @@
     }, false);
 
 
-    window.addEventListener("load", function() {
+    window.addEventListener('load', function() {
         if (navigator.getVRDevices) {
             navigator.getVRDevices().then(vrDeviceCallback);
         }
