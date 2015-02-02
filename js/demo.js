@@ -12,6 +12,13 @@
 
     var light = null;
     var water = null;
+    var controls = null;
+
+    function start() {
+        initRenderer();
+        initScene();
+        render();
+    }
 
     /**
      * Get VR devices callback.
@@ -31,9 +38,7 @@
             }
         }
 
-        initRenderer();
-        initScene();
-        render();
+        start();
     } 
 
     /**
@@ -80,8 +85,8 @@
         scene.add(ambient);
 
         loadModels();
-
         createWater();
+        initController();
     }
 
     function createWater() {
@@ -170,26 +175,48 @@
     }
 
     function initRenderer() {
-        renderCanvas = document.getElementById("render-canvas");
+        renderCanvas = document.getElementById('render-canvas');
         renderer = new THREE.WebGLRenderer({
             canvas: renderCanvas,
         });
         renderer.setClearColor(0x555555);
         renderer.setSize(1280, 800, false);
-        vrrenderer = new THREE.VRRenderer(renderer, vrHMD);
+
+        if (vrHMD) {
+            vrrenderer = new THREE.VRRenderer(renderer, vrHMD);
+        }
+    }
+
+    function initController() {
+        controls = new THREE.OrbitControls( camera, renderer.domElement );
+        controls.userPan = false;
+        controls.userPanSpeed = 0.0;
+        controls.maxDistance = 5000.0;
+        controls.maxPolarAngle = Math.PI * 0.495;
+        controls.center.set( 0, 500, 0 );
     }
 
     function render() {
         requestAnimationFrame(render);
-        var state = vrHMDSensor.getState();
-        camera.quaternion.set(state.orientation.x, 
-                              state.orientation.y, 
-                              state.orientation.z, 
-                              state.orientation.w);
+
         water.material.uniforms.time.value += 1.0 / 60.0;
         water.render();
-        vrrenderer.render(scene, camera);
+        controls.update();
+
+        if (vrHMDSensor) {
+            var state = vrHMDSensor.getState();
+            camera.quaternion.set(state.orientation.x, 
+                                  state.orientation.y, 
+                                  state.orientation.z, 
+                                  state.orientation.w);
+            vrrenderer.render(scene, camera);
+        }
+        else {
+            renderer.render(scene, camera);
+        }
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
 
     window.addEventListener('keypress', function(e) {
         if (e.charCode == 'f'.charCodeAt(0)) {
@@ -220,6 +247,9 @@
         }
         else if (navigator.mozGetVRDevices) {
             navigator.mozGetVRDevices(vrDeviceCallback);
+        }
+        else {
+            start();
         }
     }, false);
 }());
